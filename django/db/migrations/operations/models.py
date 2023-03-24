@@ -153,6 +153,34 @@ class CreateModel(ModelOperation):
                     managers=self.managers,
                 ),
             ]
+        elif foreign_keys_old_refs := [
+            (_, field)
+            for _, field in self.fields
+            if field.remote_field
+            and field.remote_field.model == f'{app_label}.{operation.old_name_lower}'
+        ]:
+            fields = [
+                field
+                for field in self.fields.copy()
+                if field not in foreign_keys_old_refs
+            ]
+
+            foreign_keys_new_refs = []
+
+            for (_, field) in foreign_keys_old_refs:
+                name, path, args, kwargs = field.deconstruct()
+                kwargs['to'] = f'{app_label}.{operation.new_name_lower}'
+                field = field.__class__(*args, **kwargs)
+                foreign_keys_new_refs.append((_, field))
+
+            return [
+                CreateModel(
+                    self.name,
+                    fields=fields + foreign_keys_new_refs,
+                    bases=self.bases,
+                    managers=self.managers,
+                ),
+            ]
         elif (
             isinstance(operation, AlterModelOptions)
             and self.name_lower == operation.name_lower

@@ -1,3 +1,5 @@
+import itertools
+
 class MigrationOptimizer:
     """
     Power the optimization process, where you provide a list of Operations
@@ -50,11 +52,23 @@ class MigrationOptimizer:
                     if right:
                         new_operations.extend(in_between)
                         new_operations.extend(result)
-                    elif all(op.reduce(other, app_label) is True for op in in_between):
+
+                    elif all(
+                        op.reduce(other, app_label) is True
+                        or isinstance(op.reduce(other, app_label), list)
+                        for op in in_between
+                    ):
                         # Perform a left reduction if all of the in-between
                         # operations can optimize through other.
                         new_operations.extend(result)
+
+                        in_between = [op.reduce(other, app_label) for op in in_between]
+
+                        # Make a flat list
+                        in_between = list(itertools.chain(*in_between))
+
                         new_operations.extend(in_between)
+
                     else:
                         # Otherwise keep trying.
                         new_operations.append(operation)
